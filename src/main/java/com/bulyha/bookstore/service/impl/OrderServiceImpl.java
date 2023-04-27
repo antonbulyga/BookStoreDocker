@@ -4,11 +4,7 @@ import com.bulyha.bookstore.dto.OrderDto;
 import com.bulyha.bookstore.exception.ResourceNotFoundException;
 import com.bulyha.bookstore.mapper.BookConverter;
 import com.bulyha.bookstore.mapper.OrderConverter;
-import com.bulyha.bookstore.model.Book;
-import com.bulyha.bookstore.model.Order;
-import com.bulyha.bookstore.model.OrderStatus;
-import com.bulyha.bookstore.model.Store;
-import com.bulyha.bookstore.model.User;
+import com.bulyha.bookstore.model.*;
 import com.bulyha.bookstore.repository.BookRepository;
 import com.bulyha.bookstore.repository.OrderRepository;
 import com.bulyha.bookstore.repository.StoreRepository;
@@ -19,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Transactional
 @Service
@@ -43,7 +41,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderDto addOrder(OrderDto orderDto) {
         Order savedOrder;
-        Order processedOrder = processOrder(orderDto);
+        Order processedOrder = processOrderBeforeSave(orderDto);
         if (checkBooksAvailability(processedOrder, Optional.ofNullable(processedOrder.getStore()))) {
             double totalPriceFromTHeOrder = calculateSumPriceOfTheOrder(processedOrder);
             processedOrder.setTotalPrice(totalPriceFromTHeOrder);
@@ -99,7 +97,7 @@ public class OrderServiceImpl implements OrderService {
         return flag;
     }
 
-    private Order processOrder(OrderDto orderDto) {
+    private Order processOrderBeforeSave(OrderDto orderDto) {
         Optional<Store> storeFromOrderDto = storeRepository.findById(orderDto.getStoreId());
         Optional<User> userFromDto = userRepository.findById(orderDto.getUserId());
 
@@ -110,6 +108,12 @@ public class OrderServiceImpl implements OrderService {
         order.setCreationDate(LocalDateTime.now());
         order.setBookList(orderDto.getBookList().stream().map(bookConverter::setBookIdFromBookDtoToBook).toList());
         return order;
+    }
+
+    private Map<OrderStatus, Double> groupOrdersByOrderStatus() {
+        List<Order> orderList = orderRepository.findAll();
+        Map<OrderStatus, Double> groupedOrder = orderList.stream().collect(Collectors.groupingBy(Order::getStatus, Collectors.summingDouble(Order::getTotalPrice)));
+        return groupedOrder;
     }
 
 }

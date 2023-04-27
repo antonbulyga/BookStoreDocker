@@ -35,5 +35,4 @@ build/
 my-sql-data
 mongo-data
 
-
-postres-data/
+postgres-data/
